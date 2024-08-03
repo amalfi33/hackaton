@@ -1,22 +1,24 @@
 from django.db import models
 from django.contrib.auth.models import User
 from phonenumber_field.modelfields import PhoneNumberField
+from django.conf import settings
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 class Profile(models.Model):
-    user = models.OneToOneField(User , on_delete=models.CASCADE)
-    avatar = models.ImageField(upload_to='profile_avatar/' , null=True,blank=True, verbose_name='Аватарка')
-    phone = PhoneNumberField(unique=True, blank=True, null=True, verbose_name='Номер телефона')
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    avatar = models.ImageField(upload_to='profile_avatar/', null=True, blank=True, verbose_name='Аватарка')
+    phone = models.CharField(max_length=20, blank=True, null=True, verbose_name='Номер телефона')
 
-    class Meta: 
-        verbose_name = 'Профиль'
-        verbose_name_plural = 'Профили'
-    
     def __str__(self):
         return self.user.username
-    
+
+
 class Friend(models.Model):
     profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='user_friend', verbose_name='Пользователь')
     friend = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='friend', verbose_name='Друг')
+    
+            
     class Meta:
         verbose_name = 'Друг'
         verbose_name_plural = 'Друзья'
@@ -24,31 +26,17 @@ class Friend(models.Model):
     def __str__(self):
         return f"{self.profile.user.username} -> {self.friend.user.username}"
 
-
-
 class Message(models.Model):
-    chat = models.ForeignKey('Chat', related_name='messages', on_delete=models.CASCADE, verbose_name='Чат')
-    sender = models.ForeignKey(Profile, related_name='sent_messages', on_delete=models.CASCADE, verbose_name='Отправитель')
-    content = models.TextField(verbose_name='Содержание')
-    timestamp = models.DateTimeField(auto_now_add=True, verbose_name='Время отправки')
-
-    class Meta:
-        verbose_name = 'Сообщение'
-        verbose_name_plural = 'Сообщения'
-        ordering = ['-timestamp']
-
-    def __str__(self):
-        return f"Сообщение от {self.sender.username} в {self.timestamp}"
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='sent_messages', on_delete=models.CASCADE)
+    receiver = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='received_messages', on_delete=models.CASCADE)
+    content = models.TextField(blank=True, null=True)
+    file = models.FileField(upload_to='messages/files/', blank=True, null=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
 
 class Chat(models.Model):
     participants = models.ManyToManyField(Profile, related_name='chats', verbose_name='Участники')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
-
-    class Meta:
-        verbose_name = 'Чат'
-        verbose_name_plural = 'Чаты'
-        ordering = ['-updated_at']
 
 class GroupChat(models.Model):
     name = models.CharField(max_length=100, verbose_name='Название группы')

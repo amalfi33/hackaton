@@ -5,6 +5,7 @@ from .models import Friend , Chat, Message , Profile
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login , authenticate , logout
 from django.contrib.auth.models import User
+from django.utils import timezone
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
@@ -64,42 +65,46 @@ def send_friend_request(request):
         form = FriendRequestForm()
     return render(request, 'send_friend_request.html', {'form': form})
 
+
 def chat_history(request, friend_id):
-    user = request.user
-    friend = get_object_or_404(User, id=friend_id)
-    messages = Message.objects.filter(
-        sender__in=[user, friend],
-        receiver__in=[user, friend]
-    ).order_by('timestamp')
+    if request.method == 'GET':
+        messages = Message.objects.filter(
+            sender=request.user, receiver_id=friend_id
+        ) | Message.objects.filter(
+            sender_id=friend_id, receiver=request.user
+        ).order_by('timestamp')
 
-    messages_data = []
-    for message in messages:
-        messages_data.append({
-            'text': message.text,
-            'timestamp': message.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-            'avatar': message.sender.avatar.url if message.sender.avatar else 'default-avatar-url',
-            'is_sender': message.sender == user
-        })
+        messages_data = [
+            {
+                'content': msg.content,
+                'file': msg.file.url if msg.file else None,
+                'timestamp': msg.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                'is_sender': msg.sender == request.user,
+            }
+            for msg in messages
+        ]
 
-    return JsonResponse({'messages': messages_data})
+        return JsonResponse({'messages': messages_data})
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+
 
 @csrf_exempt
 def send_message(request, friend_id):
     if request.method == 'POST':
         user = request.user
         friend = get_object_or_404(User, id=friend_id)
-        data = json.loads(request.body)
-        text = data.get('text')
+        content = request.POST.get('content')
+        file = request.FILES.get('file')
 
-        if text:
+        if content or file:
             message = Message.objects.create(
                 sender=user,
                 receiver=friend,
-                text=text,
+                content=content,
+                file=file,
                 timestamp=timezone.now()
             )
             return JsonResponse({'status': 'success'})
-    
     return JsonResponse({'status': 'error'}, status=400)
 
 def profile_detail(request, profile_id):
@@ -110,5 +115,4 @@ def profile_detail(request, profile_id):
         'phone': profile.phone or 'Not provided'
     }
     return JsonResponse(data)
-
 
