@@ -1,5 +1,6 @@
 from django.shortcuts import render , redirect,get_object_or_404
 from .forms import RegisterForm ,FriendRequestForm
+from .models import Friend , Chat, Message
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login , authenticate , logout
 from django.contrib.auth.decorators import login_required
@@ -38,8 +39,6 @@ def logout_site(request):
 # ------------------------------------------------------
 
 # Добавление в друзья
-
-
 @login_required
 def send_friend_request(request):
     if request.method == 'POST':
@@ -51,13 +50,13 @@ def send_friend_request(request):
             return redirect('friends_list')
     else:
         form = FriendRequestForm()
-    return render(request, 'messenger/send_friend_request.html', {'form': form})
+    return render(request, 'send_friend_request.html', {'form': form})
 
 @login_required
 def friends_list(request):
     friends = Friend.objects.filter(user=request.user, status='accepted')
     friend_requests = Friend.objects.filter(friend=request.user, status='pending')
-    return render(request, 'messenger/friends_list.html', {'friends': friends, 'friend_requests': friend_requests})
+    return render(request, 'friends_list.html', {'friends': friends, 'friend_requests': friend_requests})
 
 @login_required
 def handle_friend_request(request, friend_request_id, action):
