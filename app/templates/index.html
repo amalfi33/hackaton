@@ -21,8 +21,8 @@
                                 <div class="name">{{ friend.friend.user.username }}</div>
                                 <div class="status"> <i class="fa fa-circle online"></i> online </div>
                             </div>
-                            <a href="javascript:void(0);" onclick="showProfileModal('{{ friend.friend.id }}', '{{ friend.friend.user.username }}', '{{ friend.friend.avatar.url }}','{{ friend.friend.phone }}')">
-                                <i class= "fa fa-question" style="font-size: 20px;"></i>
+                            <a href="javascript:void(0);" onclick="showProfileModal('{{ friend.friend.id }}', '{{ friend.friend.user.username }}', '{{ friend.friend.avatar.url|default:'https://abrakadabra.fun/uploads/posts/2021-12/1640528661_1-abrakadabra-fun-p-serii-chelovek-na-avu-1.png' }}', '{{ friend.friend.phone }}')">
+                                <i class="fa fa-question" style="font-size: 20px;"></i>
                             </a>
                         </li>
                         {% empty %}
@@ -42,7 +42,7 @@
                                     <img src="" alt="avatar">
                                 </a>
                                 <div id="chat-about" class="chat-about">
-                                    <h6 id="chat-name" class="m-b-0">Select a friend to chat</h6>
+                                    <h6 id="chat-name" class="m-b-0"></h6>
                                     <small></small>
                                 </div>
                             </div>
@@ -55,7 +55,7 @@
                         </div>
                     </div>
                     <div id="chat-history" class="chat-history" style="height: 500px; overflow-y: scroll;">
-                        <!-- Сообщения будут загружаться сюда -->
+
                     </div>
                     <div class="chat-message clearfix">
                         <div class="input-group mb-0">
@@ -72,7 +72,6 @@
     </div>
 </div>
 
-<!-- Модальное окно для профиля -->
 <div class="modal fade" id="profileModal" tabindex="-1" role="dialog" aria-labelledby="profileModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -95,39 +94,64 @@
 
 <script>
     function openChat(friendId, friendName, friendAvatar) {
-        // Обновите заголовок чата и аватар
         document.getElementById('chat-name').textContent = friendName;
         document.getElementById('chat-avatar').querySelector('img').src = friendAvatar;
 
-        // Очистите и загрузите историю сообщений для выбранного друга
-        document.getElementById('chat-history').innerHTML = '<p>Loading chat with ' + friendName + '...</p>';
-        
-        // Здесь можно добавить AJAX-запрос для получения истории сообщений
+        fetch(`/chats/${friendId}/`)
+            .then(response => response.json())
+            .then(data => {
+                const chatHistory = document.getElementById('chat-history');
+                chatHistory.innerHTML = '';
+                data.messages.forEach(message => {
+                    const messageElement = document.createElement('li');
+                    messageElement.className = 'clearfix';
+                    messageElement.innerHTML = `
+                        <div class="message-data ${message.is_sender ? 'text-right' : ''}">
+                            <span class="message-data-time">${message.timestamp}</span>
+                            <img src="${message.avatar}" alt="avatar">
+                        </div>
+                        <div class="message ${message.is_sender ? 'my-message' : 'other-message'}">${message.text}</div>
+                    `;
+                    chatHistory.appendChild(messageElement);
+                });
+                chatHistory.scrollTop = chatHistory.scrollHeight; // Прокрутка до конца
+            })
+            .catch(error => console.error('Error loading chat:', error));
     }
 
     function sendMessage() {
         const messageInput = document.getElementById('message-input');
         const message = messageInput.value;
+        const friendId = document.getElementById('chat-name').dataset.friendId;
 
-        if (message) {
-            // Здесь можно добавить AJAX-запрос для отправки сообщения
-            // И обновить чат-историю
-            messageInput.value = ''; // Очистите поле ввода
+        if (message && friendId) {
+            // AJAX запрос для отправки сообщения
+            fetch(`/chats/${friendId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ text: message })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Обновите историю сообщений
+                openChat(friendId, document.getElementById('chat-name').textContent, document.getElementById('chat-avatar').querySelector('img').src);
+                messageInput.value = '';
+            })
+            .catch(error => console.error('Error sending message:', error));
         }
     }
 
     function showProfileModal(profileId, friendName, friendAvatar, friendPhone) {
-        fetch(`/profile_detail/${profileId}/`)
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('profile-name').textContent = data.username;
-                document.getElementById('profile-avatar').src = data.avatar;
-                document.getElementById('profile-phone').textContent = `Phone: ${data.phone}`;
-                
-                // Показываем модальное окно
-                $('#profileModal').modal('show');
-            })
-            .catch(error => console.error('Error fetching profile data:', error));
+        document.getElementById('profile-name').textContent = friendName;
+        document.getElementById('profile-avatar').src = friendAvatar;
+        document.getElementById('profile-phone').textContent = `Phone: ${friendPhone}`;
+
+
+        $('#profileModal').modal('show');
     }
 </script>
 {% endblock %}
+

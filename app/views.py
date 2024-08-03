@@ -1,10 +1,12 @@
-from django.http import JsonResponse
+
 from django.shortcuts import render , redirect,get_object_or_404
 from .forms import  FriendRequestForm , CustomUserCreationForm
 from .models import Friend , Chat, Message , Profile 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login , authenticate , logout
 from django.contrib.auth.models import User
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 
 
 
@@ -62,19 +64,43 @@ def send_friend_request(request):
         form = FriendRequestForm()
     return render(request, 'send_friend_request.html', {'form': form})
 
-def get_chat_history(request, friend_id):
+def chat_history(request, friend_id):
+    user = request.user
     friend = get_object_or_404(User, id=friend_id)
     messages = Message.objects.filter(
-        sender=request.user,
-        receiver=friend
-    ) | Message.objects.filter(
-        sender=friend,
-        receiver=request.user
-    )
-    messages = messages.order_by('timestamp')
+        sender__in=[user, friend],
+        receiver__in=[user, friend]
+    ).order_by('timestamp')
 
-    response_data = [{'sender': message.sender.username, 'content': message.content, 'timestamp': message.timestamp.strftime('%Y-%m-%d %H:%M:%S')} for message in messages]
-    return JsonResponse({'messages': response_data})
+    messages_data = []
+    for message in messages:
+        messages_data.append({
+            'text': message.text,
+            'timestamp': message.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            'avatar': message.sender.avatar.url if message.sender.avatar else 'default-avatar-url',
+            'is_sender': message.sender == user
+        })
+
+    return JsonResponse({'messages': messages_data})
+
+@csrf_exempt
+def send_message(request, friend_id):
+    if request.method == 'POST':
+        user = request.user
+        friend = get_object_or_404(User, id=friend_id)
+        data = json.loads(request.body)
+        text = data.get('text')
+
+        if text:
+            message = Message.objects.create(
+                sender=user,
+                receiver=friend,
+                text=text,
+                timestamp=timezone.now()
+            )
+            return JsonResponse({'status': 'success'})
+    
+    return JsonResponse({'status': 'error'}, status=400)
 
 def profile_detail(request, profile_id):
     profile = get_object_or_404(Profile, pk=profile_id)
