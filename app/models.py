@@ -15,23 +15,15 @@ class Profile(models.Model):
         return self.user.username
     
 class Friend(models.Model):
-    PENDING = 'pending'
-    ACCEPTED = 'accepted'
-    REJECTED = 'rejected'
-    
-    STATUS_CHOICES = [
-        (PENDING, 'Pending'),
-        (ACCEPTED, 'Accepted'),
-        (REJECTED, 'Rejected'),
-    ]
-
     profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='user_friend', verbose_name='Пользователь')
     friend = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='friend', verbose_name='Друг')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=PENDING, verbose_name='Статус')
-
     class Meta:
         verbose_name = 'Друг'
         verbose_name_plural = 'Друзья'
+
+    def __str__(self):
+        return f"{self.profile.user.username} -> {self.friend.user.username}"
+
 
 
 class Message(models.Model):
