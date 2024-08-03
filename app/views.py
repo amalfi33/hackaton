@@ -1,36 +1,43 @@
 from django.shortcuts import render , redirect,get_object_or_404
-from .forms import RegisterForm ,FriendRequestForm
+from .forms import  FriendRequestForm
 from .models import Friend , Chat, Message
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login , authenticate , logout
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.contrib.auth.forms import UserCreationForm
+
 
 def index(request):
     return render(request, 'index.html')
 
 # Регистрация и аутентификация 
+
+
 def register_view(request):
     if request.method == 'POST':
-        form = RegisterForm(request.POST)
+        form = UserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            login(request, user=user)
+            login(request, user)
             return redirect('index')
     else:
-        form = RegisterForm()
-    return render(request, 'register.html', {"form" : form})
+        form = UserCreationForm()
+    return render(request, 'register.html', {"form": form})
+
+
 
 def login_site(request):
     if request.method == 'POST':
         username = request.POST['username']
         password = request.POST['password']
-        user = authenticate(request , username=username,password=password)
+        user = authenticate(request,username=username,password=password)
         if user is not None:
             login(request, user=user)
             return redirect('index')
         else:
             return render(request, 'index.html' , {"error" : "неверное имя или пароль"})
     return render(request, "login.html")
+
 
 def logout_site(request):
     if request.user.is_authenticated:

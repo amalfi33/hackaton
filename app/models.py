@@ -1,13 +1,26 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+
 class Friend(models.Model):
+    PENDING = 'pending'
+    ACCEPTED = 'accepted'
+    REJECTED = 'rejected'
+    
+    STATUS_CHOICES = [
+        (PENDING, 'Pending'),
+        (ACCEPTED, 'Accepted'),
+        (REJECTED, 'Rejected'),
+    ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_friend', verbose_name='Пользователь')
     friend = models.ForeignKey(User, on_delete=models.CASCADE, related_name='friend', verbose_name='Друг')
-    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=PENDING, verbose_name='Статус')
+
     class Meta:
         verbose_name = 'Друг'
         verbose_name_plural = 'Друзья'
+
 
 class Message(models.Model):
     chat = models.ForeignKey('Chat', related_name='messages', on_delete=models.CASCADE, verbose_name='Чат')
