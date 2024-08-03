@@ -1,3 +1,4 @@
+from django.http import JsonResponse
 from django.shortcuts import render , redirect,get_object_or_404
 from .forms import  FriendRequestForm , CustomUserCreationForm
 from .models import Friend , Chat, Message , Profile 
@@ -8,7 +9,10 @@ from django.contrib.auth.models import User
 
 
 def index(request):
-    return render(request, 'index.html')
+    profile = Profile.objects.get(user=request.user)
+    friends = Friend.objects.filter(profile=profile)
+    context = {"friends" : friends}
+    return render(request, 'index.html' , context)
 
 # Регистрация и аутентификация 
 def register_view(request):
@@ -58,13 +62,27 @@ def send_friend_request(request):
         form = FriendRequestForm()
     return render(request, 'send_friend_request.html', {'form': form})
 
+def get_chat_history(request, friend_id):
+    friend = get_object_or_404(User, id=friend_id)
+    messages = Message.objects.filter(
+        sender=request.user,
+        receiver=friend
+    ) | Message.objects.filter(
+        sender=friend,
+        receiver=request.user
+    )
+    messages = messages.order_by('timestamp')
 
-def index(request):
-    # Получите профиль текущего пользователя
-    profile = Profile.objects.get(user=request.user)
-    
-    # Получите список друзей текущего пользователя
-    friends = Friend.objects.filter(profile=profile)
-    
-    # Передайте данные в контекст шаблона
-    return render(request, 'index.html', {'friends': friends})
+    response_data = [{'sender': message.sender.username, 'content': message.content, 'timestamp': message.timestamp.strftime('%Y-%m-%d %H:%M:%S')} for message in messages]
+    return JsonResponse({'messages': response_data})
+
+def profile_detail(request, profile_id):
+    profile = get_object_or_404(Profile, pk=profile_id)
+    data = {
+        'username': profile.user.username,
+        'avatar': profile.avatar.url if profile.avatar else 'https://abrakadabra.fun/uploads/posts/2021-12/1640528661_1-abrakadabra-fun-p-serii-chelovek-na-avu-1.png',
+        'phone': profile.phone or 'Not provided'
+    }
+    return JsonResponse(data)
+
+
