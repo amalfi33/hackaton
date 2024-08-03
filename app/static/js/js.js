@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', (event) => {
     const password = document.getElementById('password');
+    const password2 = document.getElementById('password2');
     const passwordHelpBlock = document.getElementById('passwordHelpBlock');
+    const passwordMatchBlock = document.getElementById('passwordMatchBlock');
 
     password.addEventListener('input', function () {
         let message = 'Ваш пароль должен содержать не менее 8 символов, включать буквы и цифры.';
@@ -17,5 +19,15 @@ document.addEventListener('DOMContentLoaded', (event) => {
         }
 
         passwordHelpBlock.textContent = message;
+    });
+
+    password2.addEventListener('input', function () {
+        if (password.value !== password2.value) {
+            passwordMatchBlock.textContent = 'Пароли не совпадают.';
+            passwordMatchBlock.style.color = 'red';
+        } else {
+            passwordMatchBlock.textContent = 'Пароли совпадают.';
+            passwordMatchBlock.style.color = 'green';
+        }
     });
 });

@@ -1,7 +1,19 @@
 from django.db import models
 from django.contrib.auth.models import User
+from phonenumber_field.modelfields import PhoneNumberField
 
+class Profile(models.Model):
+    user = models.OneToOneField(User , on_delete=models.CASCADE)
+    avatar = models.ImageField(upload_to='profile_avatar/' , null=True,blank=True, verbose_name='Аватарка')
+    phone = PhoneNumberField(unique=True, blank=True, null=True, verbose_name='Номер телефона')
 
+    class Meta: 
+        verbose_name = 'Профиль'
+        verbose_name_plural = 'Профили'
+    
+    def __str__(self):
+        return self.user.username
+    
 class Friend(models.Model):
     PENDING = 'pending'
     ACCEPTED = 'accepted'
@@ -13,8 +25,8 @@ class Friend(models.Model):
         (REJECTED, 'Rejected'),
     ]
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_friend', verbose_name='Пользователь')
-    friend = models.ForeignKey(User, on_delete=models.CASCADE, related_name='friend', verbose_name='Друг')
+    profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='user_friend', verbose_name='Пользователь')
+    friend = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='friend', verbose_name='Друг')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=PENDING, verbose_name='Статус')
 
     class Meta:
@@ -24,7 +36,7 @@ class Friend(models.Model):
 
 class Message(models.Model):
     chat = models.ForeignKey('Chat', related_name='messages', on_delete=models.CASCADE, verbose_name='Чат')
-    sender = models.ForeignKey(User, related_name='sent_messages', on_delete=models.CASCADE, verbose_name='Отправитель')
+    sender = models.ForeignKey(Profile, related_name='sent_messages', on_delete=models.CASCADE, verbose_name='Отправитель')
     content = models.TextField(verbose_name='Содержание')
     timestamp = models.DateTimeField(auto_now_add=True, verbose_name='Время отправки')
 
@@ -37,7 +49,7 @@ class Message(models.Model):
         return f"Сообщение от {self.sender.username} в {self.timestamp}"
 
 class Chat(models.Model):
-    participants = models.ManyToManyField(User, related_name='chats', verbose_name='Участники')
+    participants = models.ManyToManyField(Profile, related_name='chats', verbose_name='Участники')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
 
@@ -48,7 +60,7 @@ class Chat(models.Model):
 
 class GroupChat(models.Model):
     name = models.CharField(max_length=100, verbose_name='Название группы')
-    participants = models.ManyToManyField(User, related_name='group_chats', verbose_name='Участники')
+    participants = models.ManyToManyField(Profile, related_name='group_chats', verbose_name='Участники')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
 
