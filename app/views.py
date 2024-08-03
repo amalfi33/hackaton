@@ -89,6 +89,7 @@ def chat_history(request, friend_id):
 
 
 @csrf_exempt
+@login_required
 def send_message(request, friend_id):
     if request.method == 'POST':
         user = request.user
